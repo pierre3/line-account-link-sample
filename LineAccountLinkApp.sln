@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.27428.2037
+VisualStudioVersion = 15.0.27130.2027
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LineAccountLinkApp", "LineAccountLinkApp\LineAccountLinkApp.csproj", "{9F68D6AD-B918-4CE7-8519-3820A0646A31}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LineAccountLinkApp", "LineAccountLinkApp\LineAccountLinkApp.csproj", "{9F68D6AD-B918-4CE7-8519-3820A0646A31}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BotFunction", "BotFunction\BotFunction.csproj", "{0B9FC469-6D94-4E91-B586-E8DB890F1524}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{9F68D6AD-B918-4CE7-8519-3820A0646A31}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9F68D6AD-B918-4CE7-8519-3820A0646A31}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9F68D6AD-B918-4CE7-8519-3820A0646A31}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0B9FC469-6D94-4E91-B586-E8DB890F1524}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0B9FC469-6D94-4E91-B586-E8DB890F1524}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0B9FC469-6D94-4E91-B586-E8DB890F1524}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0B9FC469-6D94-4E91-B586-E8DB890F1524}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

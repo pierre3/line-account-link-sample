@@ -1,18 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Claims;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+﻿using LineAccountLinkApp.Data;
 using LineAccountLinkApp.Models;
 using LineAccountLinkApp.Models.AccountViewModels;
 using LineAccountLinkApp.Services;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Threading.Tasks;
 
 namespace LineAccountLinkApp.Controllers
 {
@@ -22,12 +21,15 @@ namespace LineAccountLinkApp.Controllers
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly ApplicationDbContext _appDbContext;
+
         private readonly IEmailSender _emailSender;
         private readonly ILogger _logger;
 
         public AccountController(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
+            ApplicationDbContext appDbContext,
             IEmailSender emailSender,
             ILogger<AccountController> logger)
         {
@@ -35,10 +37,35 @@ namespace LineAccountLinkApp.Controllers
             _signInManager = signInManager;
             _emailSender = emailSender;
             _logger = logger;
+            _appDbContext = appDbContext;
         }
 
         [TempData]
         public string ErrorMessage { get; set; }
+
+        [HttpGet]
+        public async Task<IActionResult> LineLink(string linkToken)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            var rngcp = new RNGCryptoServiceProvider();
+            var bytes = new byte[32];
+            rngcp.GetBytes(bytes);
+            var nonce = Convert.ToBase64String(bytes);
+
+            var link = _appDbContext.Find<LineLink>(nonce);
+            if (link == null)
+            {
+                link = new LineLink()
+                {
+                    Nonce = nonce,
+                    UserId = userId
+                };
+                await _appDbContext.AddAsync(link);
+                await _appDbContext.SaveChangesAsync();
+                return Redirect($"https://access.line.me/dialog/bot/accountLink?linkToken={linkToken}&nonce={link.Nonce}");
+            }
+            return Redirect($"https://access.line.me/dialog/bot/accountLink?linkToken={linkToken}");
+        }
 
         [HttpGet]
         [AllowAnonymous]
