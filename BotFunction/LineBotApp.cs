@@ -29,36 +29,52 @@ namespace BotFunction
                 case TextEventMessage textMessage:
 
                     var status = await Status.FindAsync(ev.Source.Type.ToString(), ev.Source.Id);
-                    //
-                    //アカウント連携済みの場合
-                    //
-                    if (!string.IsNullOrEmpty(status?.AccountLinkNonce))
+
+                    //アカウント連携していない場合
+                    if (string.IsNullOrEmpty(status?.AccountLinkNonce))
                     {
-                        //nonceを使って、WebAppのAPIをたたく
-                        var nonce = Uri.EscapeUriString(status.AccountLinkNonce);
-                        var userInfo = await _httpClient.GetStringAsync($"https://lineaccountlinkapp.azurewebsites.net/api/user/info?nonce={nonce}");
-                        await Line.ReplyMessageAsync(ev.ReplyToken, userInfo);
-                        break;
+                        await StartAccountLinkAsync(ev);
                     }
-                    //
-                    //アカウント未連携の場合
-                    //
-                    //LINEサーバーからLink Tokenを取得
-                    var linkToken = await Line.IssueLinkTokenAsync(ev.Source.Id);
-                    //WebAppへのログインが成功後の遷移先URLを指定
-                    var returnUrl = Uri.EscapeUriString($"/Account/LineLink?linkToken={linkToken}");
-                    //連携用のリンクをユーザーに返信
-                    await Line.ReplyMessageAsync(ev.ReplyToken, new[]
+                    //アカウント連携済みの場合
+                    else
                     {
+                        await GetWebAppUserInfoAsync(ev, status);
+                    }
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// アカウント連携を開始する
+        /// </summary>
+        private async Task StartAccountLinkAsync(MessageEvent ev)
+        {
+
+            //LINEサーバーからLink Tokenを取得
+            var linkToken = await Line.IssueLinkTokenAsync(ev.Source.Id);
+            //WebAppへのログインが成功後の遷移先URLを指定
+            var returnUrl = Uri.EscapeDataString($"/Account/LineLink?linkToken={linkToken}");
+            //連携用のリンクをユーザーに返信
+            await Line.ReplyMessageAsync(ev.ReplyToken, new[]
+            {
                         new TemplateMessage("account link",
                             new ButtonsTemplate("アカウント連携をします。", null, "LINE Account Link", new[]
                         {
                             new UriTemplateAction("OK", $"https://lineaccountlinkapp.azurewebsites.net/Account/Login?returnUrl={returnUrl}")
                         }))
                     });
-                    break;
-            }
         }
+
+        /// <summary>
+        /// アカウント連携時に取得したNonceを利用してWebAppのAPIを実行
+        /// </summary>
+        private async Task GetWebAppUserInfoAsync(MessageEvent ev, BotStatus status)
+        {
+            var nonce = Uri.EscapeDataString(status.AccountLinkNonce);
+            var userInfo = await _httpClient.GetStringAsync($"https://lineaccountlinkapp.azurewebsites.net/api/user/info?nonce={nonce}");
+            await Line.ReplyMessageAsync(ev.ReplyToken, userInfo);
+        }
+
         /// <summary>
         /// アカウント連携イベント
         /// </summary>
