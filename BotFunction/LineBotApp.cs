@@ -36,7 +36,7 @@ namespace BotFunction
                     {
                         //nonceを使って、WebAppのAPIをたたく
                         var nonce = Uri.EscapeUriString(status.AccountLinkNonce);
-                        var userInfo = await _httpClient.GetStringAsync($"http://lineaccountlinkapp.azurewebsites.net/api/user/info/{nonce}");
+                        var userInfo = await _httpClient.GetStringAsync($"https://lineaccountlinkapp.azurewebsites.net/api/user/info?nonce={nonce}");
                         await Line.ReplyMessageAsync(ev.ReplyToken, userInfo);
                         break;
                     }
@@ -53,7 +53,7 @@ namespace BotFunction
                         new TemplateMessage("account link",
                             new ButtonsTemplate("アカウント連携をします。", null, "LINE Account Link", new[]
                         {
-                            new UriTemplateAction("OK", $"http://lineaccountlinkapp.azurewebsites.net/Account/Login?returnUrl={returnUrl}")
+                            new UriTemplateAction("OK", $"https://lineaccountlinkapp.azurewebsites.net/Account/Login?returnUrl={returnUrl}")
                         }))
                     });
                     break;

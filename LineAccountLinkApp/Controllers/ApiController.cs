@@ -7,20 +7,20 @@ using System.Threading.Tasks;
 namespace LineAccountLinkApp.Controllers
 {
     [Produces("application/json")]
-    [Route("api/User")]
-    public class UserController : Controller
+    [Route("api")]
+    public class ApiController : Controller
     {
         private ApplicationDbContext _dbContext;
         private UserManager<ApplicationUser> _userManager;
 
-        public UserController(ApplicationDbContext dbContext, UserManager<ApplicationUser> userManager)
+        public ApiController(ApplicationDbContext dbContext, UserManager<ApplicationUser> userManager)
         {
             _dbContext = dbContext;
             _userManager = userManager;
         }
 
-        [HttpGet("Info/{nonce}")]
-        public async Task<IActionResult> GetInfo(string nonce)
+        [HttpGet("user/info")]
+        public async Task<IActionResult> GetUserInfo([FromQuery]string nonce)
         {
             
             var link = await _dbContext.FindAsync<LineLink>(nonce);
