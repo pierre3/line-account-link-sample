@@ -9,9 +9,11 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Linq;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
+
 
 namespace LineAccountLinkApp.Controllers
 {
@@ -44,27 +46,55 @@ namespace LineAccountLinkApp.Controllers
         public string ErrorMessage { get; set; }
 
         [HttpGet]
-        public async Task<IActionResult> LineLink(string linkToken)
+        public async Task<IActionResult> Link([FromQuery]string linkToken, [FromQuery]bool relogin = true)
         {
+            if (relogin)
+            {
+                await _signInManager.SignOutAsync();
+
+                var returnUrl = Uri.EscapeDataString($"/Account/Link?linkToken={linkToken}&relogin=false");
+                return LocalRedirect($"/Account/Login?returnUrl={returnUrl}");
+            }
+
             var userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
             var rngcp = new RNGCryptoServiceProvider();
             var bytes = new byte[32];
             rngcp.GetBytes(bytes);
             var nonce = Convert.ToBase64String(bytes);
 
-            var link = _appDbContext.Find<LineLink>(nonce);
+            var link = await _appDbContext.FindAsync<LineLink>(userId);
+
             if (link == null)
             {
-                link = new LineLink()
+                await _appDbContext.AddAsync(new LineLink()
                 {
                     Nonce = nonce,
                     UserId = userId
-                };
-                await _appDbContext.AddAsync(link);
-                await _appDbContext.SaveChangesAsync();
-                return Redirect($"https://access.line.me/dialog/bot/accountLink?linkToken={linkToken}&nonce={link.Nonce}");
+                });
             }
-            return Redirect($"https://access.line.me/dialog/bot/accountLink?linkToken={linkToken}");
+            else
+            {
+                link.Nonce = nonce;
+                _appDbContext.Update(link);
+            }
+            await _appDbContext.SaveChangesAsync();
+            return Redirect($"https://access.line.me/dialog/bot/accountLink?linkToken={linkToken}&nonce={Uri.EscapeDataString(nonce)}");
+        }
+
+        [HttpDelete]
+        [AllowAnonymous]
+        public async Task<IActionResult> Unlink(string nonce)
+        {
+            var link = _appDbContext.Set<LineLink>().FirstOrDefault(o => o.Nonce == nonce);
+            if (link == null)
+            {
+                return Forbid();
+            }
+
+            _appDbContext.Remove(link);
+            await _appDbContext.SaveChangesAsync();
+
+            return Ok();
         }
 
         [HttpGet]

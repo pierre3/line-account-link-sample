@@ -38,6 +38,22 @@ namespace BotFunction
                     //アカウント連携済みの場合
                     else
                     {
+                        if (textMessage.Text == "解除")
+                        {
+
+                            var ret = await _httpClient.DeleteAsync($"https://lineaccountlinkapp.azurewebsites.net/Account/Unlink?nonce={Uri.EscapeDataString(status.AccountLinkNonce)}");
+                            if (!ret.IsSuccessStatusCode)
+                            {
+                                await Line.ReplyMessageAsync(ev.ReplyToken, "アカウントリンクの解除に失敗しました。");
+                            }
+                            else
+                            {
+                                await Status.DeleteAsync(ev.Source.Type.ToString(), ev.Source.Id);
+                                await Line.ReplyMessageAsync(ev.ReplyToken, "アカウントリンクを解除しました。");
+                            }
+                            return;
+                        }
+
                         await GetWebAppUserInfoAsync(ev, status);
                     }
                     break;
@@ -51,16 +67,14 @@ namespace BotFunction
         {
 
             //LINEサーバーからLink Tokenを取得
-            var linkToken = await Line.IssueLinkTokenAsync(ev.Source.Id);
-            //WebAppへのログインが成功後の遷移先URLを指定
-            var returnUrl = Uri.EscapeDataString($"/Account/LineLink?linkToken={linkToken}");
+            var linkToken = Uri.EscapeDataString(await Line.IssueLinkTokenAsync(ev.Source.Id));
             //連携用のリンクをユーザーに返信
             await Line.ReplyMessageAsync(ev.ReplyToken, new[]
             {
                         new TemplateMessage("account link",
                             new ButtonsTemplate("アカウント連携をします。", null, "LINE Account Link", new[]
                         {
-                            new UriTemplateAction("OK", $"https://lineaccountlinkapp.azurewebsites.net/Account/Login?returnUrl={returnUrl}")
+                            new UriTemplateAction("OK", $"https://lineaccountlinkapp.azurewebsites.net/Account/Link?linkToken={linkToken}")
                         }))
                     });
         }

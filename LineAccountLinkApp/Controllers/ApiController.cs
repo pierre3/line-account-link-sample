@@ -2,6 +2,8 @@
 using LineAccountLinkApp.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 
 namespace LineAccountLinkApp.Controllers
@@ -23,10 +25,10 @@ namespace LineAccountLinkApp.Controllers
         public async Task<IActionResult> GetUserInfo([FromQuery]string nonce)
         {
             
-            var link = await _dbContext.FindAsync<LineLink>(nonce);
+            var link = _dbContext.Set<LineLink>().FirstOrDefault(o=>o.Nonce == nonce);
             if (link == null)
             {
-                return BadRequest("Invalid account link nonce");
+                return Forbid("Invalid account link nonce");
             }
             var user = await _userManager.FindByIdAsync(link.UserId);
             if (user == null)
@@ -36,5 +38,6 @@ namespace LineAccountLinkApp.Controllers
 
             return new JsonResult(new { user.Id, user.UserName, user.Email });
         }
+        
     }
 }
