@@ -45,23 +45,29 @@ namespace LineAccountLinkApp.Controllers
         [TempData]
         public string ErrorMessage { get; set; }
 
+        /// <summary>
+        /// アカウント連携
+        /// </summary>
         [HttpGet]
         public async Task<IActionResult> Link([FromQuery]string linkToken, [FromQuery]bool relogin = true)
         {
+            //ログイン中でも必ずログインを求める
             if (relogin)
             {
                 await _signInManager.SignOutAsync();
-
+                //ログイン後、ここに戻ってくるようにreturnUrlを設定
                 var returnUrl = Uri.EscapeDataString($"/Account/Link?linkToken={linkToken}&relogin=false");
                 return LocalRedirect($"/Account/Login?returnUrl={returnUrl}");
             }
 
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            //Nonceを生成
             var rngcp = new RNGCryptoServiceProvider();
             var bytes = new byte[32];
             rngcp.GetBytes(bytes);
             var nonce = Convert.ToBase64String(bytes);
 
+            //ユーザーIDとNonceをDBに保存
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
             var link = await _appDbContext.FindAsync<LineLink>(userId);
 
             if (link == null)
@@ -78,19 +84,24 @@ namespace LineAccountLinkApp.Controllers
                 _appDbContext.Update(link);
             }
             await _appDbContext.SaveChangesAsync();
+
+            //生成したNonceを付けてLINEサーバーにリダイレクト
             return Redirect($"https://access.line.me/dialog/bot/accountLink?linkToken={linkToken}&nonce={Uri.EscapeDataString(nonce)}");
         }
 
+        /// <summary>
+        /// アカウント連携解除
+        /// </summary>
         [HttpDelete]
         [AllowAnonymous]
         public async Task<IActionResult> Unlink(string nonce)
         {
+            //指定されたNonceを持つユーザーを削除する
             var link = _appDbContext.Set<LineLink>().FirstOrDefault(o => o.Nonce == nonce);
             if (link == null)
             {
-                return Forbid();
+                return NotFound("User not found.");
             }
-
             _appDbContext.Remove(link);
             await _appDbContext.SaveChangesAsync();
 
