@@ -49,17 +49,23 @@ namespace LineAccountLinkApp.Controllers
         /// アカウント連携
         /// </summary>
         [HttpGet]
-        public async Task<IActionResult> Link([FromQuery]string linkToken, [FromQuery]bool relogin = true)
+        [AllowAnonymous]
+        public async Task<IActionResult> Link([FromQuery]string linkToken)
         {
-            //ログイン中でも必ずログインを求める
-            if (relogin)
-            {
-                await _signInManager.SignOutAsync();
-                //ログイン後、ここに戻ってくるようにreturnUrlを設定
-                var returnUrl = Uri.EscapeDataString($"/Account/Link?linkToken={linkToken}&relogin=false");
-                return LocalRedirect($"/Account/Login?returnUrl={returnUrl}");
-            }
+            //ログイン済みでも再ログインを求める
+            await _signInManager.SignOutAsync();
+            //ログイン後、Account/LinkEx　に遷移するようにreturnUrlを設定
+            var returnUrl = Uri.EscapeDataString($"/Account/LinkEx?linkToken={linkToken}");
+            //ログイン画面へリダイレクト
+            return LocalRedirect($"/Account/Login?returnUrl={returnUrl}");
+        }
 
+        /// <summary>
+        /// アカウント連携（実行）
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> LinkEx([FromQuery]string linkToken)
+        {
             //Nonceを生成
             var rngcp = new RNGCryptoServiceProvider();
             var bytes = new byte[32];
