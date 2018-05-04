@@ -10,6 +10,11 @@ namespace BotFunction
 
     class LineBotApp : WebhookApplication
     {
+        //アカウント連携していない場合のリッチメニューID
+        private static readonly string LinkRichMenuId = "richmenu-a21e7857666218690b0f8261417131e9";
+        //アカウント連携済みの場合のリッチメニューID
+        private static readonly string UnLinkRichMenuId = "richmenu-277f5eda62084d9073f711be39c1d83a";
+
         private static HttpClient _httpClient = new HttpClient();
 
         private LineMessagingClient Line { get; }
@@ -38,22 +43,13 @@ namespace BotFunction
 
                     if (string.IsNullOrEmpty(status?.AccountLinkNonce))
                     {
-                        //連携開始
-                        await StartAccountLinkAsync(ev);
+                        await Line.LinkRichMenuToUserAsync(ev.Source.Id, LinkRichMenuId);
+                        await Line.ReplyMessageAsync(ev.ReplyToken, "ボタンをタップしてWebサービスとユーザーアカウントを連携してね！");
                     }
-                    //アカウント連携済みの場合
                     else
                     {
-
-                        if (textMessage.Text == "解除")
-                        {
-                            //連係解除
-                            await UnlinkAsync(ev, status);
-                            return;
-                        }
-                        //連携済みのWebサービスのAPIを利用
-                        await InvokeWebApiAsync(ev, status);
-
+                        await Line.LinkRichMenuToUserAsync(ev.Source.Id, UnLinkRichMenuId);
+                        await Line.ReplyMessageAsync(ev.ReplyToken, "「ユーザー情報確認」をタップすると、Webサービスのアカウント情報の確認ができるよ");
                     }
                     break;
             }
@@ -72,17 +68,41 @@ namespace BotFunction
 
             await Line.ReplyMessageAsync(ev.ReplyToken, $"アカウント連携に成功しました！");
 
+            //メニュー切り替え
+            await Line.LinkRichMenuToUserAsync(ev.Source.Id, UnLinkRichMenuId);
+
             //連携に成功したらNonceを保存しておく
             await Status.UpdateAsync(
                 new BotStatus(
                     userId: ev.Source.Id,
                     accountLinkNonce: ev.Link.Nonce));
+            
+        }
+
+        protected override async Task OnPostbackAsync(PostbackEvent ev)
+        {
+            var status = await Status.FindAsync(
+                    partitionKey: BotStatus.DefaultPartitionKey,
+                    rowKey: ev.Source.Id);
+            switch (ev.Postback.Data)
+            {
+                case "account link":    //連携開始
+                    await StartAccountLinkAsync(ev);
+                    break;
+                case "API(UserInfo)":   //連携済みのWebサービスのAPIを利用
+                    await InvokeWebApiAsync(ev, status);
+                    break;
+                case "Unlink":          //連係解除
+                    await UnlinkAsync(ev, status);
+                    break;
+
+            }
         }
 
         /// <summary>
         /// アカウント連携を開始する
         /// </summary>
-        private async Task StartAccountLinkAsync(MessageEvent ev)
+        private async Task StartAccountLinkAsync(ReplyableEvent ev)
         {
 
             //LINEサーバーからLink Tokenを取得
@@ -101,7 +121,7 @@ namespace BotFunction
         /// <summary>
         /// アカウント連携を解除する
         /// </summary>
-        private async Task UnlinkAsync(MessageEvent ev, BotStatus status)
+        private async Task UnlinkAsync(ReplyableEvent ev, BotStatus status)
         {
             var ret = await _httpClient.DeleteAsync($"https://lineaccountlinkapp.azurewebsites.net/Account/Unlink?nonce={Uri.EscapeDataString(status.AccountLinkNonce)}");
             if (!ret.IsSuccessStatusCode)
@@ -110,15 +130,17 @@ namespace BotFunction
             }
             else
             {
-                await Status.DeleteAsync(ev.Source.Type.ToString(), ev.Source.Id);
+                await Status.DeleteAsync(BotStatus.DefaultPartitionKey, ev.Source.Id);
                 await Line.ReplyMessageAsync(ev.ReplyToken, "アカウントリンクを解除しました。");
+                //メニュー切り替え
+                await Line.LinkRichMenuToUserAsync(ev.Source.Id, LinkRichMenuId);
             }
         }
 
         /// <summary>
         /// アカウント連携時に取得したNonceを利用してWebAppのAPIを実行
         /// </summary>
-        private async Task InvokeWebApiAsync(MessageEvent ev, BotStatus status)
+        private async Task InvokeWebApiAsync(ReplyableEvent ev, BotStatus status)
         {
             var nonce = Uri.EscapeDataString(status.AccountLinkNonce);
             var userInfo = await _httpClient.GetStringAsync($"https://lineaccountlinkapp.azurewebsites.net/api/user/info?nonce={nonce}");
