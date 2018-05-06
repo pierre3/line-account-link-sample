@@ -11,9 +11,9 @@ namespace BotFunction
     class LineBotApp : WebhookApplication
     {
         //アカウント連携していない場合のリッチメニューID
-        private static readonly string LinkRichMenuId = "richmenu-a21e7857666218690b0f8261417131e9";
+        private static readonly string LinkRichMenuId = "richmenu-3631a6e7eb1f293659ebb757b56ed86b";
         //アカウント連携済みの場合のリッチメニューID
-        private static readonly string UnLinkRichMenuId = "richmenu-277f5eda62084d9073f711be39c1d83a";
+        private static readonly string UnLinkRichMenuId = "richmenu-7128fe883b7b31cdc3e726ee4058d3e8";
 
         private static HttpClient _httpClient = new HttpClient();
 
